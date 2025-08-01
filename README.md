@@ -62,6 +62,9 @@ bash install.sh
 
 ## ✅ License
 
-MIT — use, remix, fork freely. Privacy is a right.
+MIT — use, remix, and fork freely. This project is provided for educational and research purposes only. It is not intended for use in illegal activities, financial speculation, or circumventing laws in any jurisdiction. Use responsibly and at your own risk.
 
+
+## Disclaimer:
+This repository is distributed for educational and informational purposes only. The author is not liable for any misuse, financial loss, legal issue, or damages resulting from the use of this software. Users are solely responsible for ensuring their actions comply with all applicable laws.
 ---
