@@ -57,7 +57,7 @@ echo -e "\033[1;34m🔐 Encrypting wallet...\033[0m"
 python ~/vault/lock.py
 
 echo -e "\033[1;34m🔗 Setting up 'start' alias...\033[0m"
-ALIAS_CMD="alias start='clear && python ~/vault/unlock.py && cd ~/xmr && ~/XMR-CLI-Launcher/start && python ~/vault/lock.py && cd ~/'"
+ALIAS_CMD="alias start='clear && python ~/vault/unlock.py && cd ~/xmr && ./start && python ~/vault/lock.py && cd ~/'"
 if ! grep -Fxq "$ALIAS_CMD" ~/.bashrc; then
     echo "$ALIAS_CMD" >> ~/.bashrc
     echo -e "\033[1;32mAlias 'start' added to ~/.bashrc\033[0m"

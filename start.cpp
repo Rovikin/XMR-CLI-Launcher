@@ -10,9 +10,10 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <dirent.h>
 
 namespace cfg {
-constexpr const char* WALLET = "wallet";
+constexpr const char* WALLET_DIR = "/data/data/com.termux/files/home/xmr";
 constexpr const char* DAEMON = "un4yrhwq4d53caoiaadeiur5e5wgkgp74zw3p3twqh3nxh6ztz347dad.onion";
 constexpr const char* PROXY = "127.0.0.1";
 constexpr const char* TOR = "/data/data/com.termux/files/usr/bin/tor";
@@ -20,6 +21,7 @@ constexpr int PORT = 18081, SOCKS = 9050, TIMEOUT = 30;
 }
 
 pid_t tor_pid = 0;
+std::string wallet_name;
 
 bool is_tor_up() {
     int s = socket(AF_INET, SOCK_STREAM, 0);
@@ -57,16 +59,33 @@ pid_t start_tor() {
 bool wait_tor(int t) {
     while (t-- > 0) {
         if (is_tor_up()) return true;
-        std::this_thread::sleep_for(std::chrono::milliseconds(500)); // ⏱️ Lebih cepat setengah detik
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
     return false;
 }
 
+bool detect_wallet() {
+    DIR* dir = opendir(cfg::WALLET_DIR);
+    if (!dir) return false;
+
+    dirent* ent;
+    while ((ent = readdir(dir))) {
+        std::string name = ent->d_name;
+        if (name.size() > 6 && name.substr(name.size() - 5) == ".keys") {
+            wallet_name = name.substr(0, name.size() - 5);  // Strip ".keys"
+            break;
+        }
+    }
+    closedir(dir);
+    return !wallet_name.empty();
+}
+
 void start_wallet() {
-    chmod(cfg::WALLET, 0600);
+    std::string wallet_path = std::string(cfg::WALLET_DIR) + "/" + wallet_name;
+    chmod(wallet_path.c_str(), 0600);
     std::vector<std::string> a = {
         "monero-wallet-cli",
-        "--wallet-file", cfg::WALLET,
+        "--wallet-file", wallet_path,
         "--daemon-address", std::string(cfg::DAEMON) + ":" + std::to_string(cfg::PORT),
         "--proxy", std::string(cfg::PROXY) + ":" + std::to_string(cfg::SOCKS),
         "--trusted-daemon",
@@ -90,6 +109,11 @@ void cleanup(int) {
 int main() {
     signal(SIGINT, cleanup);
     signal(SIGTERM, cleanup);
+
+    if (!detect_wallet()) {
+        write(STDERR_FILENO, "Wallet not found in ~/xmr\n", 27);
+        return 1;
+    }
 
     if (!is_tor_up()) {
         tor_pid = start_tor();
