@@ -65,5 +65,3 @@ bash install.sh
 MIT — use, remix, fork freely. Privacy is a right.
 
 ---
-
-Made with ❤️ for cypherpunks, minimalists, and Monero believers.
