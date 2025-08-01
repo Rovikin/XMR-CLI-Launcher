@@ -68,4 +68,5 @@ MIT — use, remix, and fork freely. This project is provided for educational an
 ## Disclaimer:
 
 This repository is distributed for educational and informational purposes only. The author is not liable for any misuse, financial loss, legal issue, or damages resulting from the use of this software. Users are solely responsible for ensuring their actions comply with all applicable laws.
+
 ---
