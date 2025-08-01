@@ -14,13 +14,11 @@ from cryptography.exceptions import InvalidTag
 
 console = Console()
 
-# --- Konfigurasi Path ---
 HOME_DIR = Path.home()
 VAULT_DIR = HOME_DIR / "vault"
 XMR_DIR = HOME_DIR / "xmr"
 ENCRYPTED_FILE = VAULT_DIR / "xmr.enc"
 
-# --- Fungsi Derivasi Kunci ---
 def derive_key(password: str, salt: bytes) -> bytes:
     """Derivasi kunci Fernet dari password dan salt."""
     kdf = PBKDF2HMAC(
@@ -32,7 +30,6 @@ def derive_key(password: str, salt: bytes) -> bytes:
     )
     return base64.urlsafe_b64encode(kdf.derive(password.encode()))
 
-# --- Fungsi Dekripsi ---
 def decrypt_file():
     if not ENCRYPTED_FILE.is_file():
         console.print(f"[red]Error:[/red] File enkripsi '{ENCRYPTED_FILE}' tidak ditemukan.")
@@ -60,7 +57,6 @@ def decrypt_file():
 
         decrypted_data = fernet.decrypt(encrypted_data)
 
-        # Hapus direktori XMR_DIR yang sudah ada sebelum ekstraksi (otomatis timpa)
         if XMR_DIR.is_dir():
             shutil.rmtree(XMR_DIR)
 
@@ -69,7 +65,6 @@ def decrypt_file():
             f.write(decrypted_data)
 
         with tarfile.open(temp_decrypted_tar_path, "r") as tar:
-            # Menggunakan filter='data' untuk menghilangkan DeprecationWarning dan meningkatkan keamanan
             tar.extractall(path=HOME_DIR, filter='data')
 
         return True
@@ -84,7 +79,6 @@ def decrypt_file():
         if 'temp_decrypted_tar_path' in locals() and temp_decrypted_tar_path.exists():
             os.remove(temp_decrypted_tar_path)
 
-# --- Main Logic untuk unlock.py ---
 def main():
     decrypt_file()
 
