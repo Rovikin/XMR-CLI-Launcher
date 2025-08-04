@@ -10,18 +10,17 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <dirent.h>
+#include <cstdlib> // buat getenv
 
 namespace cfg {
-constexpr const char* WALLET_DIR = "/data/data/com.termux/files/home/xmr";
-constexpr const char* DAEMON = "un4yrhwq4d53caoiaadeiur5e5wgkgp74zw3p3twqh3nxh6ztz347dad.onion";
-constexpr const char* PROXY = "127.0.0.1";
-constexpr const char* TOR = "/data/data/com.termux/files/usr/bin/tor";
-constexpr int PORT = 18081, SOCKS = 9050, TIMEOUT = 30;
+    constexpr const char* WALLET = "xorchi";
+    constexpr const char* DAEMON = "un4yrhwq4d53caoiaadeiur5e5wgkgp74zw3p3twqh3nxh6ztz347dad.onion";
+    constexpr const char* PROXY = "127.0.0.1";
+    constexpr const char* TOR = "/data/data/com.termux/files/usr/bin/tor";
+    constexpr int PORT = 18081, SOCKS = 9050, TIMEOUT = 30;
 }
 
 pid_t tor_pid = 0;
-std::string wallet_name;
 
 bool is_tor_up() {
     int s = socket(AF_INET, SOCK_STREAM, 0);
@@ -64,25 +63,18 @@ bool wait_tor(int t) {
     return false;
 }
 
-bool detect_wallet() {
-    DIR* dir = opendir(cfg::WALLET_DIR);
-    if (!dir) return false;
-
-    dirent* ent;
-    while ((ent = readdir(dir))) {
-        std::string name = ent->d_name;
-        if (name.size() > 6 && name.substr(name.size() - 5) == ".keys") {
-            wallet_name = name.substr(0, name.size() - 5);  // Strip ".keys"
-            break;
-        }
-    }
-    closedir(dir);
-    return !wallet_name.empty();
-}
-
 void start_wallet() {
-    std::string wallet_path = std::string(cfg::WALLET_DIR) + "/" + wallet_name;
+    const char* home = getenv("HOME");
+    if (!home) {
+        fprintf(stderr, "Environment variable HOME not set.\n");
+        _exit(1);
+    }
+
+    std::string basedir = std::string(home) + "/xmr";
+    std::string wallet_path = basedir + "/" + cfg::WALLET;
+
     chmod(wallet_path.c_str(), 0600);
+
     std::vector<std::string> a = {
         "monero-wallet-cli",
         "--wallet-file", wallet_path,
@@ -91,11 +83,13 @@ void start_wallet() {
         "--trusted-daemon",
         "--log-file", "/dev/null"
     };
+
     std::vector<char*> argv;
     for (auto& s : a) argv.push_back(const_cast<char*>(s.c_str()));
     argv.push_back(nullptr);
+
     execvp("monero-wallet-cli", argv.data());
-    _exit(1);
+    _exit(1); // Kalau exec gagal
 }
 
 void cleanup(int) {
@@ -109,11 +103,6 @@ void cleanup(int) {
 int main() {
     signal(SIGINT, cleanup);
     signal(SIGTERM, cleanup);
-
-    if (!detect_wallet()) {
-        write(STDERR_FILENO, "Wallet not found in ~/xmr\n", 27);
-        return 1;
-    }
 
     if (!is_tor_up()) {
         tor_pid = start_tor();
