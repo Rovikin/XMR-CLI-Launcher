@@ -13,7 +13,7 @@
 #include <cstdlib> // buat getenv
 
 namespace cfg {
-    constexpr const char* WALLET = "xorchi";
+    constexpr const char* WALLET = "wallet";
     constexpr const char* DAEMON = "un4yrhwq4d53caoiaadeiur5e5wgkgp74zw3p3twqh3nxh6ztz347dad.onion";
     constexpr const char* PROXY = "127.0.0.1";
     constexpr const char* TOR = "/data/data/com.termux/files/usr/bin/tor";
