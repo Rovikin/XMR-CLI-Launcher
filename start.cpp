@@ -18,6 +18,7 @@ namespace cfg {
     constexpr const char* PROXY = "127.0.0.1";
     constexpr const char* TOR = "/data/data/com.termux/files/usr/bin/tor";
     constexpr int PORT = 18081, SOCKS = 9050, TIMEOUT = 30;
+    constexpr const char* LOGFILE = "/data/data/com.termux/files/home/monero-wallet-cli.log"; // explicit log file
 }
 
 pid_t tor_pid = 0;
@@ -72,12 +73,16 @@ std::string detect_wallet_name(const std::string& basedir) {
     while ((ent = readdir(dir)) != nullptr) {
         std::string fname = ent->d_name;
         if (fname.size() > 5 && fname.substr(fname.size() - 5) == ".keys") {
-            found = fname.substr(0, fname.size() - 5); // potong ".keys"
+            found = fname.substr(0, fname.size() - 5);
             break;
         }
     }
     closedir(dir);
     return found;
+}
+
+void delete_wallet_log() {
+    unlink(cfg::LOGFILE); // Hapus log setelah wallet tutup
 }
 
 void start_wallet() {
@@ -97,21 +102,33 @@ void start_wallet() {
     std::string wallet_path = basedir + "/" + wallet_name;
     chmod(wallet_path.c_str(), 0600);
 
-    std::vector<std::string> a = {
-        "monero-wallet-cli",
-        "--wallet-file", wallet_path,
-        "--daemon-address", std::string(cfg::DAEMON) + ":" + std::to_string(cfg::PORT),
-        "--proxy", std::string(cfg::PROXY) + ":" + std::to_string(cfg::SOCKS),
-        "--trusted-daemon",
-        "--log-file", "/dev/null"
-    };
+    pid_t pid = fork();
+    if (pid == 0) {
+        chdir(basedir.c_str()); // supaya log gak nyasar
 
-    std::vector<char*> argv;
-    for (auto& s : a) argv.push_back(const_cast<char*>(s.c_str()));
-    argv.push_back(nullptr);
+        std::vector<std::string> args = {
+            "monero-wallet-cli",
+            "--wallet-file", wallet_path,
+            "--daemon-address", std::string(cfg::DAEMON) + ":" + std::to_string(cfg::PORT),
+            "--proxy", std::string(cfg::PROXY) + ":" + std::to_string(cfg::SOCKS),
+            "--trusted-daemon",
+            "--log-level", "0",
+            "--log-file", cfg::LOGFILE
+        };
 
-    execvp("monero-wallet-cli", argv.data());
-    _exit(1);
+        std::vector<char*> argv;
+        for (auto& arg : args) argv.push_back(const_cast<char*>(arg.c_str()));
+        argv.push_back(nullptr);
+
+        execvp("monero-wallet-cli", argv.data());
+        _exit(1); // kalau exec gagal
+    }
+
+    // Tunggu wallet selesai
+    waitpid(pid, nullptr, 0);
+
+    // Hapus log setelah keluar
+    delete_wallet_log();
 }
 
 void cleanup(int) {
@@ -119,6 +136,8 @@ void cleanup(int) {
         kill(tor_pid, SIGTERM);
         waitpid(tor_pid, nullptr, 0);
     }
+
+    delete_wallet_log(); // pastikan log dihapus saat Ctrl+C
     _exit(0);
 }
 
