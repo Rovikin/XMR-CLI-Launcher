@@ -10,10 +10,10 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <cstdlib> // buat getenv
+#include <cstdlib>
+#include <dirent.h>
 
 namespace cfg {
-    constexpr const char* WALLET = "wallet";
     constexpr const char* DAEMON = "un4yrhwq4d53caoiaadeiur5e5wgkgp74zw3p3twqh3nxh6ztz347dad.onion";
     constexpr const char* PROXY = "127.0.0.1";
     constexpr const char* TOR = "/data/data/com.termux/files/usr/bin/tor";
@@ -63,6 +63,23 @@ bool wait_tor(int t) {
     return false;
 }
 
+std::string detect_wallet_name(const std::string& basedir) {
+    DIR* dir = opendir(basedir.c_str());
+    if (!dir) return "";
+
+    std::string found;
+    struct dirent* ent;
+    while ((ent = readdir(dir)) != nullptr) {
+        std::string fname = ent->d_name;
+        if (fname.size() > 5 && fname.substr(fname.size() - 5) == ".keys") {
+            found = fname.substr(0, fname.size() - 5); // potong ".keys"
+            break;
+        }
+    }
+    closedir(dir);
+    return found;
+}
+
 void start_wallet() {
     const char* home = getenv("HOME");
     if (!home) {
@@ -71,8 +88,13 @@ void start_wallet() {
     }
 
     std::string basedir = std::string(home) + "/xmr";
-    std::string wallet_path = basedir + "/" + cfg::WALLET;
+    std::string wallet_name = detect_wallet_name(basedir);
+    if (wallet_name.empty()) {
+        fprintf(stderr, "❌ Wallet .keys file not found in %s\n", basedir.c_str());
+        _exit(1);
+    }
 
+    std::string wallet_path = basedir + "/" + wallet_name;
     chmod(wallet_path.c_str(), 0600);
 
     std::vector<std::string> a = {
@@ -89,7 +111,7 @@ void start_wallet() {
     argv.push_back(nullptr);
 
     execvp("monero-wallet-cli", argv.data());
-    _exit(1); // Kalau exec gagal
+    _exit(1);
 }
 
 void cleanup(int) {
